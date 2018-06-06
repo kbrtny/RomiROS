@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import rospy
 from geometry_msgs.msg import Twist
@@ -32,5 +32,5 @@ if __name__ == '__main__':
     r = rospy.Rate(COMMAND_RATE)
     node = RosRomiNode()
     while not rospy.is_shutdown():
-        node.publish_encoder_states()
+        #node.publish_encoder_states()
         r.sleep()
