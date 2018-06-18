@@ -2,7 +2,7 @@
 
 import rospy
 from geometry_msgs.msg import Twist
-#from a_star = Astar()
+from a_star import AStar
 
 from std_msgs.msg import String
 
@@ -11,7 +11,7 @@ COMMAND_RATE = 20
 class RosRomiNode:
 
     def __init__(self):
-        #self.a_star = AStar()
+        self.a_star = AStar()
         rospy.Subscriber("romi/cmd_vel", Twist, self.motorCallback)
 
     def motorCallback(self, msg):
@@ -22,7 +22,7 @@ class RosRomiNode:
         if msg.linear.y != 0:
             right = msg.linear.y * 400
         print("Left: ", int(left), " Right: ", int(right))
-        #a_star.motors(int(left),int(right))
+        self.a_star.motors(int(left),int(right))
 
 
 
