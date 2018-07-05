@@ -3,6 +3,7 @@
 import rospy
 from geometry_msgs.msg import Twist
 from a_star import AStar
+from MockBot import MockBot
 
 from std_msgs.msg import String
 
@@ -11,19 +12,74 @@ COMMAND_RATE = 20
 class RosRomiNode:
 
     def __init__(self):
-        self.a_star = AStar()
-        rospy.Subscriber("romi/cmd_vel", Twist, self.motorCallback)
+        #Create a_star instance to talk to arduino based a_star Romi board
+        #self.a_star = AStar()
+        self.a_star = MockBot()
+        self.encoder_resolution = 12    #according to pololu encoder count
+        self.gear_reduction = 120   #according to romi website
+        self.wheel_diameter = 0.07  #70mm diameter wheels according to website
+        self.wheel_track = 0.141 #149mm outside to outside according to drawing, 8mm thick tires
+        self.motorMax = 400
 
-    def motorCallback(self, msg):
-        left = 0.0
-        right = 0.0
-        if msg.linear.x != 0:
-            left = msg.linear.x * 400
-        if msg.linear.y != 0:
-            right = msg.linear.y * 400
-        print("Left: ", int(left), " Right: ", int(right))
-        self.a_star.motors(int(left),int(right))
+        #internal data
+        self.leftEncoder = None   #last encoder state variables for odometry
+        self.rightEncoder = None
+        self.x = 0
+        self.y = 0
+        self.th = 0
 
+        self.leftMotor = 0
+        self.rightMotor = 0
+
+        #time variables for odometry pulled from http://github.com/hbrobotics/ros_arduino_bridge
+        self.rate = float(50)   #hard coding this for now, will be param'd later
+        self.tickes_per_meter = self.encoder_resolution * self.gear_reduction / (self.wheel_diameter * pi)
+
+        now = rospy.Time.now()
+        self.then = now
+        self.t_delta = rospy.Duration(1.0 / self.rate)
+        self.t_next = now + self.t_delta
+
+        rospy.Subscriber("lmotor_cmd", Float32, self.lmotorCallback)
+        rospy.Subscriber("rmotor_cmd", Float32, self.rmotorCallback)
+
+        self.lwheelPub = rospy.Publisher('lwheel', Int16, queue_size=5)
+        self.rwheelPub = rospy.Publisher('rwheel', Int16, queue_size=5)
+
+    def lmotorCallback(self, msg):
+        leftMotor = msg.data * self.motorMax
+        if leftMotor > self.motorMax:
+            leftMotor = self.motorMax
+        elif leftMotor < -self.motorMax:
+            leftMotor = -self.motorMax
+        self.leftMotor = int(leftMotor)
+        self.updateMotors()
+
+    def rmotorCallback(self, msg):
+        rightMotor = msg.data * self.motorMax
+        if rightMotor > self.motorMax:
+            rightMotor = self.motorMax
+        elif rightMotor < -self.motorMax:
+            rightMotor = -self.motorMax
+        self.rightMotor = int(rightMotor)
+        self.updateMotors()
+
+    def updateMotors(self):
+        print("Left: ", self.leftMotor, "Right: ", self.rightMotor)
+        self.a_star.motors(self.leftMotor,self.rightMotor)
+
+    def pollEncoders(self):
+        now = rospy.Time.now()
+        if now > self.t_next:
+            try:
+                leftEnc, rightEnc = self.a_star.read_encoders()
+            except:
+                return
+
+        self.t_next = now + self.t_delta
+
+        self.lwheelPub.publish(leftEnc)
+        self.rwheelPub.publish(rightEnc)
 
 
 if __name__ == '__main__':
@@ -33,4 +89,5 @@ if __name__ == '__main__':
     node = RosRomiNode()
     while not rospy.is_shutdown():
         #node.publish_encoder_states()
+        node.pollEncoders()
         r.sleep()
