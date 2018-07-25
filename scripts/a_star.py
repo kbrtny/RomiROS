@@ -43,7 +43,7 @@ class AStar:
     # A delay of 0.0001 (100 us) after each write is enough to account
     # for the worst-case situation in our example code.
 
-    #self.bus.write_byte(20, address)
+    self.bus.write_byte(20, address)
     time.sleep(0.0001)
     byte_list = [self.bus.read_byte(20) for _ in range(size)]
     return struct.unpack(format, bytes(bytearray(byte_list)))

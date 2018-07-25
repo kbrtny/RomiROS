@@ -4,8 +4,9 @@ import rospy
 from geometry_msgs.msg import Twist
 from a_star import AStar
 from MockBot import MockBot
+from math import sin, cos, pi
 
-from std_msgs.msg import String
+from std_msgs.msg import String, Int16, Float32
 
 COMMAND_RATE = 20
 
@@ -13,8 +14,8 @@ class RosRomiNode:
 
     def __init__(self):
         #Create a_star instance to talk to arduino based a_star Romi board
-        #self.a_star = AStar()
-        self.a_star = MockBot()
+        self.a_star = AStar()
+        #self.a_star = MockBot() 
         self.encoder_resolution = 12    #according to pololu encoder count
         self.gear_reduction = 120   #according to romi website
         self.wheel_diameter = 0.07  #70mm diameter wheels according to website
@@ -73,13 +74,13 @@ class RosRomiNode:
         if now > self.t_next:
             try:
                 leftEnc, rightEnc = self.a_star.read_encoders()
+                self.lwheelPub.publish(leftEnc)
+                self.rwheelPub.publish(rightEnc)
             except:
                 return
 
         self.t_next = now + self.t_delta
 
-        self.lwheelPub.publish(leftEnc)
-        self.rwheelPub.publish(rightEnc)
 
 
 if __name__ == '__main__':
